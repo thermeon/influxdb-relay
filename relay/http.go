@@ -112,6 +112,12 @@ func (h *HTTP) Stop() error {
 
 func (h *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
+
+	if r.URL.Path == "/ping" && (r.Method == "GET" || r.Method == "HEAD") {
+		w.Header().Add("X-InfluxDB-Version", "relay")
+		return
+	}
+
 	if r.URL.Path != "/write" {
 		jsonError(w, http.StatusNotFound, "invalid write endpoint")
 		return
