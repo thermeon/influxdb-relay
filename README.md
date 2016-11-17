@@ -1,4 +1,4 @@
-# InfluxDB Relay
+# Refluxdb - InfluxDB Relay
 
 This project adds a basic high availability layer to InfluxDB. With the right architecture and disaster recovery processes, this achieves a highly available setup.
 
@@ -20,6 +20,20 @@ $ $GOPATH/bin/influxdb-relay -config relay.toml
 
 ## Configuration
 
+### Environment Variables
+
+This relay has bespoke logic to setup the output influxdb agents based on both Thermeon's method of running it, and environment variables.
+It expects n+ influxdbs to be at influxdb${n}.$domain
+
+* NIMBUS_DOMAIN
+  The domain suffix to append to the output domain, as $domain above
+
+* INFLUXDB_INSTANCE_COUNT
+  The number of instances to find in marathon
+
+### toml
+
+There's a toml file, refluxdb.toml, with the remaining config, most of which isn't needed
 ```toml
 [[http]]
 # Name of the HTTP server, used for display purposes only.
@@ -165,44 +179,8 @@ While `influxdb-relay` does provide some level of high availability, there are a
 
 ## Building
 
-The recommended method for building `influxdb-relay` is to use Docker
-and the included `Dockerfile_build_ubuntu64` Dockerfile, which
-includes all of the necessary dependencies.
-
-To build the docker image, you can run:
-
+There's a Makefile. So just:
 ```
-docker build -f Dockerfile_build_ubuntu64 -t influxdb-relay-builder:latest .
+make
+docker push thermeon/refluxdb:latest
 ```
-
-And then to build the project:
-
-```
-docker run --rm -v $(pwd):/root/go/src/github.com/influxdata/influxdb-relay influxdb-relay-builder
-```
-
-*NOTE* By default, builds will be for AMD64 Linux (since the container
-is running AMD64 Linux), but to change the target platform or
-architecture, use the `--platform` and `--arch` CLI options.
-
-Which should immediately call the included `build.py` build script,
-and leave any build output in the `./build` directory. To see a list
-of available build commands, append a `--help` to the command above.
-
-```
-docker run -v $(pwd):/root/go/src/github.com/influxdata/influxdb-relay influxdb-relay-builder --help
-```
-
-### Packages
-
-To build system packages for Linux (`deb`, `rpm`, etc), use the
-`--package` option:
-
-```
-docker run -v $(pwd):/root/go/src/github.com/influxdata/influxdb-relay influxdb-relay-builder --package
-```
-
-To build packages for other platforms or architectures, use the
-`--platform` and `--arch` options. For example, to build an amd64
-package for Mac OS X, use the options `--package --platform darwin`.
-
