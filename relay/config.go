@@ -1,7 +1,10 @@
 package relay
 
 import (
+	"errors"
+	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/naoina/toml"
 )
@@ -90,5 +93,38 @@ func LoadConfigFile(filename string) (cfg Config, err error) {
 	}
 	defer f.Close()
 
-	return cfg, toml.NewDecoder(f).Decode(&cfg)
+	err = toml.NewDecoder(f).Decode(&cfg)
+	if err == nil {
+		// Massively hacky way of getting the correct outputs from env
+		// Assumes only one output, etc.
+
+		if len(cfg.HTTPRelays) != 1 {
+			return cfg, errors.New("HTTP Relays must contain exactly one output for Thermeon's relay fork")
+		}
+
+		nimbusDomain := os.Getenv("NIMBUS_DOMAIN")
+		if nimbusDomain == "" {
+			err = errors.New("NIMBUS_DOMAIN env var must be set")
+			return cfg, err
+		}
+
+		var influxdbCount int
+		influxdbCount, err = strconv.Atoi(os.Getenv("INFLUXDB_INSTANCE_COUNT"))
+		if err != nil {
+			err := fmt.Errorf("Error with INFLUXDB_INSTANCE_COUNT env var: %s", err)
+			return cfg, err
+		}
+
+		for i := 1; i <= influxdbCount; i++ {
+			outputConfig := HTTPOutputConfig{
+				Name:         fmt.Sprintf("influxdb%d", i),
+				Location:     fmt.Sprintf("http://influxdb%d.%s/write", i, nimbusDomain),
+				BufferSizeMB: 100,
+			}
+			cfg.HTTPRelays[0].Outputs = append(cfg.HTTPRelays[0].Outputs, outputConfig)
+		}
+
+	}
+
+	return cfg, err
 }
